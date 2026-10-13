@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { Trash2, Edit2, Check, Circle, CheckCircle2 } from 'lucide-react';
 import { GroceryItem } from '../types';
 import { motion } from 'motion/react';

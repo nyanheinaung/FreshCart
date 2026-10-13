@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ListFilter, Trash2, ListOrdered, ChevronDown, LogOut, User } from 'lucide-react';
@@ -14,15 +9,18 @@ import Auth from './components/Auth';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
-const STORAGE_KEY = 'freshcart_grocery_list';
 const HISTORY_KEY = 'freshcart_history';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [history, setHistory] = useState<string[]>(() => {
-    const saved = localStorage.getItem(HISTORY_KEY);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +31,11 @@ export default function App() {
 
   // Sync local history to localStorage
   useEffect(() => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch {
+      // Storage unavailable (e.g. private mode) — suggestions just won't persist
+    }
   }, [history]);
 
   // Auth Listener
@@ -200,6 +202,7 @@ export default function App() {
   const pendingItems = useMemo(() => sortedItems.filter(item => !item.is_archived), [sortedItems]);
   const completedItems = useMemo(() => sortedItems.filter(item => item.is_archived), [sortedItems]);
   const readyToArchiveCount = useMemo(() => pendingItems.filter(i => i.is_completed).length, [pendingItems]);
+  const progressPercent = pendingItems.length > 0 ? (readyToArchiveCount / pendingItems.length) * 100 : 0;
 
   if (loading) {
     return (
@@ -394,19 +397,19 @@ export default function App() {
       </main>
 
       {/* Mobile progress summary */}
-      {items.length > 0 && (
+      {pendingItems.length > 0 && (
         <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 lg:hidden">
           <div className="max-w-lg mx-auto flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Progress</span>
               <span className="text-sm font-semibold">
-                {items.filter(i => i.is_completed).length} of {items.length} items bought
+                {readyToArchiveCount} of {pendingItems.length} items bought
               </span>
             </div>
             <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${(items.filter(i => i.is_completed).length / items.length) * 100}%` }}
+                animate={{ width: `${progressPercent}%` }}
                 className="h-full bg-black"
               />
             </div>
